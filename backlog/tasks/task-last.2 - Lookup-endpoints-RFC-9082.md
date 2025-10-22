@@ -1,10 +1,10 @@
 ---
 id: task-last.2
 title: Lookup endpoints RFC 9082
-status: To Do
+status: Done
 assignee: []
 created_date: '2025-10-22 11:21'
-updated_date: '2025-10-22 12:21'
+updated_date: '2025-10-22 12:47'
 labels:
   - rdap
   - lookup

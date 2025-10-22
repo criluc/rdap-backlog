@@ -1,10 +1,10 @@
 ---
 id: task-last.1
 title: Scaffold Spring Boot 3.5.6 + dipendenze
-status: To Do
+status: Done
 assignee: []
 created_date: '2025-10-22 11:21'
-updated_date: '2025-10-22 12:21'
+updated_date: '2025-10-22 12:47'
 labels:
   - spring
   - build

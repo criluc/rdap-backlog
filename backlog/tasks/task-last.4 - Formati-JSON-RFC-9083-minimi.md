@@ -1,10 +1,10 @@
 ---
 id: task-last.4
 title: Formati JSON RFC 9083 minimi
-status: To Do
+status: Done
 assignee: []
 created_date: '2025-10-22 11:21'
-updated_date: '2025-10-22 12:21'
+updated_date: '2025-10-22 12:47'
 labels:
   - json
   - standard
