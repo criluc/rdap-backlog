@@ -6,9 +6,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -27,8 +31,39 @@ class RdapControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("application/rdap+json"))
                 .andExpect(jsonPath("$.objectClassName").value("domain"))
+                .andExpect(jsonPath("$.rdapConformance[0]").value("rdap_level_0"))
                 .andExpect(jsonPath("$.ldhName").value("example.it"))
                 .andExpect(jsonPath("$.links[0].rel").value("self"));
+    }
+
+    @Test
+    @DisplayName("Domain lookup honours ETag and Cache-Control")
+    void domainLookupConditional() throws Exception {
+        MvcResult result = mockMvc.perform(get("/rdap/domain/example.it")
+                        .accept("application/rdap+json"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(header().string("ETag", notNullValue()))
+                .andReturn();
+
+        String etag = result.getResponse().getHeader("ETag");
+
+        mockMvc.perform(get("/rdap/domain/example.it")
+                        .header("If-None-Match", etag)
+                        .accept("application/rdap+json"))
+                .andExpect(status().isNotModified())
+                .andExpect(header().string("ETag", etag));
+    }
+
+    @Test
+    @DisplayName("JSContact negotiation exposes jsContactCard and conformance extension")
+    void domainLookupJsContact() throws Exception {
+        mockMvc.perform(get("/rdap/domain/example.it")
+                        .accept("application/rdap+json;ext=jscontact"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rdapConformance", containsInAnyOrder("rdap_level_0", "draft-ietf-regext-rdap-jscontact")))
+                .andExpect(jsonPath("$.entities[0].jsContactCard.uid").value("NIC-REG"))
+                .andExpect(jsonPath("$.entities[0].vcardArray").doesNotExist());
     }
 
     @Test
@@ -43,6 +78,16 @@ class RdapControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Unsupported Accept header responds with 406 and RDAP error body")
+    void acceptHeaderNotSupported() throws Exception {
+        mockMvc.perform(get("/rdap/domain/example.it")
+                        .accept("text/html"))
+                .andExpect(status().isNotAcceptable())
+                .andExpect(header().string("Content-Type", "application/rdap+json"))
+                .andExpect(jsonPath("$.errorCode").value(406));
+    }
+
+    @Test
     @DisplayName("Domain search filters by name fragment")
     void domainSearch() throws Exception {
         mockMvc.perform(get("/rdap/domains")
@@ -50,6 +95,16 @@ class RdapControllerIntegrationTest {
                         .accept("application/rdap+json"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.domainSearchResults[0].ldhName").value("example.it"));
+    }
+
+    @Test
+    @DisplayName("Domain search inherits RDAP media type")
+    void domainSearchContentType() throws Exception {
+        mockMvc.perform(get("/rdap/domains")
+                        .queryParam("name", "nic")
+                        .accept("application/rdap+json"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/rdap+json"));
     }
 
     @Test
@@ -99,5 +154,37 @@ class RdapControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("Italian RDAP Service"))
                 .andExpect(jsonPath("$.links[0].rel").value("service"));
+    }
+
+    @Test
+    @DisplayName("Help endpoint supports cache validators")
+    void helpEndpointCaching() throws Exception {
+        MvcResult result = mockMvc.perform(get("/rdap/help")
+                        .accept("application/rdap+json"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "public, max-age=86400"))
+                .andExpect(header().string("Last-Modified", notNullValue()))
+                .andExpect(header().string("ETag", notNullValue()))
+                .andReturn();
+
+        String etag = result.getResponse().getHeader("ETag");
+
+        mockMvc.perform(get("/rdap/help")
+                        .header("If-None-Match", etag)
+                        .accept("application/rdap+json"))
+                .andExpect(status().isNotModified())
+                .andExpect(header().string("ETag", etag));
+    }
+
+    @Test
+    @DisplayName("Rate limit guard maps to 429 with Retry-After")
+    void rateLimitExceeded() throws Exception {
+        mockMvc.perform(get("/rdap/domain/example.it")
+                        .header("X-Test-RateLimit", "exceeded")
+                        .accept("application/rdap+json"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "30"))
+                .andExpect(jsonPath("$.errorCode").value(429))
+                .andExpect(jsonPath("$.title").value("Too Many Requests"));
     }
 }

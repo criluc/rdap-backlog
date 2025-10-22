@@ -10,6 +10,10 @@ import it.nic.rdap.model.NameserverResource;
 import it.nic.rdap.model.NameserverSearchResponse;
 import it.nic.rdap.model.RdapEntity;
 import it.nic.rdap.service.RdapService;
+import it.nic.rdap.web.ContactFormat;
+import it.nic.rdap.web.ContactFormatResolver;
+import it.nic.rdap.web.RdapContactAdapter;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,34 +31,50 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
 public class RdapController {
 
     private final RdapService rdapService;
+    private final ContactFormatResolver contactFormatResolver;
+    private final RdapContactAdapter rdapContactAdapter;
 
-    public RdapController(RdapService rdapService) {
+    public RdapController(RdapService rdapService,
+                          ContactFormatResolver contactFormatResolver,
+                          RdapContactAdapter rdapContactAdapter) {
         this.rdapService = rdapService;
+        this.contactFormatResolver = contactFormatResolver;
+        this.rdapContactAdapter = rdapContactAdapter;
     }
 
     @GetMapping(path = "/domain/{name}")
-    public DomainResource domainLookup(@PathVariable("name") String name) {
-        return rdapService.domain(name);
+    public DomainResource domainLookup(@PathVariable("name") String name, HttpServletRequest request) {
+        ContactFormat format = contactFormatResolver.resolve(request);
+        DomainResource resource = rdapService.domain(name);
+        return rdapContactAdapter.adapt(resource, format);
     }
 
     @GetMapping(path = "/nameserver/{ldhName}")
-    public NameserverResource nameserverLookup(@PathVariable("ldhName") String ldhName) {
-        return rdapService.nameserver(ldhName);
+    public NameserverResource nameserverLookup(@PathVariable("ldhName") String ldhName, HttpServletRequest request) {
+        ContactFormat format = contactFormatResolver.resolve(request);
+        NameserverResource resource = rdapService.nameserver(ldhName);
+        return rdapContactAdapter.adapt(resource, format);
     }
 
     @GetMapping(path = "/entity/{handle}")
-    public RdapEntity entityLookup(@PathVariable("handle") String handle) {
-        return rdapService.entity(handle);
+    public RdapEntity entityLookup(@PathVariable("handle") String handle, HttpServletRequest request) {
+        ContactFormat format = contactFormatResolver.resolve(request);
+        RdapEntity entity = rdapService.entity(handle);
+        return rdapContactAdapter.adapt(entity, format);
     }
 
     @GetMapping(path = "/ip/{cidr:.+}")
-    public IpNetworkResource ipLookup(@PathVariable("cidr") String cidr) {
-        return rdapService.network(cidr);
+    public IpNetworkResource ipLookup(@PathVariable("cidr") String cidr, HttpServletRequest request) {
+        ContactFormat format = contactFormatResolver.resolve(request);
+        IpNetworkResource resource = rdapService.network(cidr);
+        return rdapContactAdapter.adapt(resource, format);
     }
 
     @GetMapping(path = "/autnum/{asn}")
-    public AutnumResource autnumLookup(@PathVariable("asn") long asn) {
-        return rdapService.autnum(asn);
+    public AutnumResource autnumLookup(@PathVariable("asn") long asn, HttpServletRequest request) {
+        ContactFormat format = contactFormatResolver.resolve(request);
+        AutnumResource resource = rdapService.autnum(asn);
+        return rdapContactAdapter.adapt(resource, format);
     }
 
     @GetMapping(path = "/help")
@@ -63,19 +83,24 @@ public class RdapController {
     }
 
     @GetMapping(path = "/domains")
-    public DomainSearchResponse domainSearch(@RequestParam("name") @NotBlank String name) {
-        return rdapService.searchDomains(name);
+    public DomainSearchResponse domainSearch(@RequestParam("name") @NotBlank String name, HttpServletRequest request) {
+        ContactFormat format = contactFormatResolver.resolve(request);
+        DomainSearchResponse response = rdapService.searchDomains(name);
+        return rdapContactAdapter.adapt(response, format);
     }
 
     @GetMapping(path = "/nameservers")
-    public NameserverSearchResponse nameserverSearch(@RequestParam("name") @NotBlank String name) {
-        return rdapService.searchNameservers(name);
+    public NameserverSearchResponse nameserverSearch(@RequestParam("name") @NotBlank String name, HttpServletRequest request) {
+        ContactFormat format = contactFormatResolver.resolve(request);
+        NameserverSearchResponse response = rdapService.searchNameservers(name);
+        return rdapContactAdapter.adapt(response, format);
     }
 
     @GetMapping(path = "/entities")
     public EntitySearchResponse entitySearch(
             @RequestParam(value = "handle", required = false) String handle,
-            @RequestParam(value = "fn", required = false) String fn) {
+            @RequestParam(value = "fn", required = false) String fn,
+            HttpServletRequest request) {
         String query = pickFirstNonBlank(handle, fn);
         if (query == null) {
             throw new ResponseStatusException(
@@ -83,7 +108,9 @@ public class RdapController {
                     "Parametro handle o fn richiesto per la ricerca entity"
             );
         }
-        return rdapService.searchEntities(query);
+        ContactFormat format = contactFormatResolver.resolve(request);
+        EntitySearchResponse response = rdapService.searchEntities(query);
+        return rdapContactAdapter.adapt(response, format);
     }
 
     private String pickFirstNonBlank(String first, String second) {

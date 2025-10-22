@@ -6,6 +6,7 @@ import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AutnumResource(
+        List<String> rdapConformance,
         String objectClassName,
         String handle,
         Long startAutnum,

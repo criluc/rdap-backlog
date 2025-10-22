@@ -1,9 +1,10 @@
 ---
 id: task-4.1
 title: POJO + mapper JSContact per entity
-status: To Do
+status: Done
 assignee: []
 created_date: '2025-10-22 14:51'
+updated_date: '2025-10-22 15:08'
 labels:
   - rdap
   - jscontact
@@ -22,6 +23,6 @@ Seguire le chiavi/strutture indicate dal draft (incluso il contenitore es. jscon
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Serializzazione conforme all’esempio del draft (campi name, emails, addresses, telecoms, org, roles…)
-- [ ] #2 Test di serializzazione round-trip jCard↔JSContact su un sottoinsieme di campi
+- [x] #1 Serializzazione conforme all’esempio del draft (campi name, emails, addresses, telecoms, org, roles…)
+- [x] #2 Test di serializzazione round-trip jCard↔JSContact su un sottoinsieme di campi
 <!-- AC:END -->

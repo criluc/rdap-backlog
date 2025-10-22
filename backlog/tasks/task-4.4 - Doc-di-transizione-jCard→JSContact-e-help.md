@@ -1,9 +1,10 @@
 ---
 id: task-4.4
 title: Doc di transizione jCard→JSContact e /help
-status: To Do
+status: Done
 assignee: []
 created_date: '2025-10-22 14:52'
+updated_date: '2025-10-22 15:09'
 labels:
   - docs
   - rdap
@@ -20,5 +21,5 @@ Aggiungere sezione /help con indicazioni su come richiedere JSContact e fallback
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Pagina /help espone esempi di richiesta/risposta in entrambi i formati
+- [x] #1 Pagina /help espone esempi di richiesta/risposta in entrambi i formati
 <!-- AC:END -->

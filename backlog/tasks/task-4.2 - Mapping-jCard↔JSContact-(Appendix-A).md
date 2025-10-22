@@ -1,9 +1,10 @@
 ---
 id: task-4.2
 title: Mapping jCard↔JSContact (Appendix A)
-status: To Do
+status: Done
 assignee: []
 created_date: '2025-10-22 14:52'
+updated_date: '2025-10-22 15:09'
 labels:
   - rdap
   - jscontact
@@ -22,6 +23,6 @@ Usare gli indici jCard corretti e i percorsi JSONPath indicati nell’appendice 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Campi jCard fn/given/family mappati su name.full e name.components (JSContact)
-- [ ] #2 Suite di test con esempi del draft (JSONPath verificati sugli esempi)
+- [x] #1 Campi jCard fn/given/family mappati su name.full e name.components (JSContact)
+- [x] #2 Suite di test con esempi del draft (JSONPath verificati sugli esempi)
 <!-- AC:END -->

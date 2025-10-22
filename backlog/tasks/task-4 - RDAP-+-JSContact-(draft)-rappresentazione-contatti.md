@@ -1,9 +1,10 @@
 ---
 id: task-4
 title: 'RDAP + JSContact (draft): rappresentazione contatti'
-status: To Do
+status: Done
 assignee: []
 created_date: '2025-10-22 14:51'
+updated_date: '2025-10-22 15:09'
 labels:
   - rdap
   - jscontact
@@ -25,7 +26,7 @@ Rif: draft-ietf-regext-rdap-jscontact (Experimental), dipendenze su RFC 9083; ri
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Le entity RDAP possono essere restituite con payload JSContact valido (RFC 9553)
-- [ ] #2 Presente segnalazione di conformance dell’estensione (valore in rdapConformance come da draft)
-- [ ] #3 Disponibile modalità di transizione: server supporta jCard e JSContact e fornisce indicazioni per il client
+- [x] #1 Le entity RDAP possono essere restituite con payload JSContact valido (RFC 9553)
+- [x] #2 Presente segnalazione di conformance dell’estensione (valore in rdapConformance come da draft)
+- [x] #3 Disponibile modalità di transizione: server supporta jCard e JSContact e fornisce indicazioni per il client
 <!-- AC:END -->

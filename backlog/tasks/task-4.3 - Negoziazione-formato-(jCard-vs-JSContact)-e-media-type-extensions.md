@@ -1,9 +1,10 @@
 ---
 id: task-4.3
 title: Negoziazione formato (jCard vs JSContact) e media-type extensions
-status: To Do
+status: Done
 assignee: []
 created_date: '2025-10-22 14:52'
+updated_date: '2025-10-22 15:09'
 labels:
   - rdap
   - api
@@ -21,6 +22,6 @@ Implementare selezione del formato contatti tramite Accept / parametri media-typ
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Client può ottenere JSContact senza rompere clienti jCard
-- [ ] #2 Valori di conformance coerenti (rdapConformance include l’estensione JSContact)
+- [x] #1 Client può ottenere JSContact senza rompere clienti jCard
+- [x] #2 Valori di conformance coerenti (rdapConformance include l’estensione JSContact)
 <!-- AC:END -->

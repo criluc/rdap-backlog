@@ -32,6 +32,8 @@ public class RdapDataStore {
 
     private static final String BASE_URL = "https://rdap.nic.it/rdap";
     private static final DateTimeFormatter EVENT_FORMATTER = DateTimeFormatter.ISO_DATE;
+    private static final List<String> BASE_RDAP_CONFORMANCE = List.of("rdap_level_0");
+    public static final String JSCONTACT_CONFORMANCE = "draft-ietf-regext-rdap-jscontact";
 
     private final Map<String, DomainResource> domains;
     private final Map<String, NameserverResource> nameservers;
@@ -39,8 +41,10 @@ public class RdapDataStore {
     private final Map<Long, AutnumResource> autnums;
     private final Map<String, IpNetworkResource> networks;
     private final HelpResponse helpResponse;
+    private final JsContactMapper jsContactMapper;
 
-    public RdapDataStore() {
+    public RdapDataStore(JsContactMapper jsContactMapper) {
+        this.jsContactMapper = jsContactMapper;
         RdapEntity registryEntity = buildRegistryEntity();
         RdapEntity registrarEntity = buildRegistrarEntity();
         RdapEntity registrantEntity = buildContactEntity("SH8013-REGISTRANT", "Registrant Example", "registrant@example.it");
@@ -74,14 +78,28 @@ public class RdapDataStore {
                 "Italian RDAP Service",
                 List.of(
                         "Benvenuto nel servizio RDAP dimostrativo.",
-                        "Gli endpoint implementano una porzione minima di RFC 9082/9083."
+                        "Gli endpoint implementano una porzione minima di RFC 9082/9083.",
+                        "Le entity possono essere fornite sia in jCard (RFC 7095) sia in JSContact (RFC 9553 / draft-ietf-regext-rdap-jscontact).",
+                        "Richiedi JSContact impostando l'header Accept: application/rdap+json;ext=jscontact o il parametro contactFormat=jscontact."
                 ),
                 List.of(new RdapLink("service", BASE_URL + "/help", "application/rdap+json", null)),
-                List.of(new RdapNotice(
-                        "Policy",
-                        List.of("L'uso del servizio è soggetto a limiti di query."),
-                        List.of(new RdapLink("about", "https://www.nic.it", "text/html", null))
-                ))
+                List.of(
+                        new RdapNotice(
+                                "Policy",
+                                List.of("L'uso del servizio è soggetto a limiti di query."),
+                                List.of(new RdapLink("about", "https://www.nic.it", "text/html", null))
+                        ),
+                        new RdapNotice(
+                                "JSContact Transition",
+                                List.of(
+                                        "Esempio richiesta: curl -H 'Accept: application/rdap+json;ext=jscontact' " + BASE_URL + "/entity/NIC-REG",
+                                        "Il server continuerà a fornire jCard in assenza dell'estensione e segnala la compatibilità tramite rdapConformance."
+                                ),
+                                List.of(
+                                        new RdapLink("specification", "https://datatracker.ietf.org/doc/draft-ietf-regext-rdap-jscontact/", "text/html", null)
+                                )
+                        )
+                )
         );
     }
 
@@ -112,19 +130,19 @@ public class RdapDataStore {
             String ldhName = entry.getValue().ldhName().toLowerCase(Locale.ROOT);
             return key.contains(normalized) || ldhName.contains(normalized);
         });
-        return new DomainSearchResponse(results, defaultNotices(), defaultLinks("/domains?name=" + query));
+        return new DomainSearchResponse(BASE_RDAP_CONFORMANCE, results, defaultNotices(), defaultLinks("/domains?name=" + query));
     }
 
     public NameserverSearchResponse searchNameservers(String query) {
         List<NameserverResource> results = filter(nameservers, entry ->
                 entry.getKey().contains(normalizeKey(query)));
-        return new NameserverSearchResponse(results, defaultNotices(), defaultLinks("/nameservers?name=" + query));
+        return new NameserverSearchResponse(BASE_RDAP_CONFORMANCE, results, defaultNotices(), defaultLinks("/nameservers?name=" + query));
     }
 
     public EntitySearchResponse searchEntities(String query) {
         List<RdapEntity> results = filter(entities, entry ->
                 entry.getKey().contains(normalizeKey(query)));
-        return new EntitySearchResponse(results, defaultNotices(), defaultLinks("/entities?fn=" + query));
+        return new EntitySearchResponse(BASE_RDAP_CONFORMANCE, results, defaultNotices(), defaultLinks("/entities?fn=" + query));
     }
 
     public HelpResponse help() {
@@ -136,11 +154,16 @@ public class RdapDataStore {
     }
 
     private RdapEntity buildRegistryEntity() {
+        List<String> roles = List.of("registrar", "registry");
+        String handle = "NIC-REG";
+        Object vcard = buildVcard("NIC Registry", "rdap-support@nic.it", roles);
         return new RdapEntity(
+                BASE_RDAP_CONFORMANCE,
                 "entity",
-                "NIC-REG",
-                List.of("registrar", "registry"),
-                buildVcard("NIC Registry", "rdap-support@nic.it"),
+                handle,
+                roles,
+                vcard,
+                jsContactMapper.fromRdapEntity(handle, vcard, roles),
                 List.of(new RdapPublicId("IANA", "1234")),
                 defaultLinks("/entity/NIC-REG"),
                 List.of(new RdapEvent("last changed", EVENT_FORMATTER.format(LocalDate.of(2024, 6, 18))))
@@ -148,11 +171,16 @@ public class RdapDataStore {
     }
 
     private RdapEntity buildRegistrarEntity() {
+        List<String> roles = List.of("registrar");
+        String handle = "REG-EXAMPLE";
+        Object vcard = buildVcard("Example Registrar S.p.A.", "contact@example-registrar.it", roles);
         return new RdapEntity(
+                BASE_RDAP_CONFORMANCE,
                 "entity",
-                "REG-EXAMPLE",
-                List.of("registrar"),
-                buildVcard("Example Registrar S.p.A.", "contact@example-registrar.it"),
+                handle,
+                roles,
+                vcard,
+                jsContactMapper.fromRdapEntity(handle, vcard, roles),
                 List.of(new RdapPublicId("IANA Registrar ID", "9999")),
                 defaultLinks("/entity/REG-EXAMPLE"),
                 List.of(new RdapEvent("last changed", EVENT_FORMATTER.format(LocalDate.of(2025, 1, 15))))
@@ -160,11 +188,15 @@ public class RdapDataStore {
     }
 
     private RdapEntity buildContactEntity(String handle, String name, String email) {
+        List<String> roles = List.of("registrant");
+        Object vcard = buildVcard(name, email, roles);
         return new RdapEntity(
+                BASE_RDAP_CONFORMANCE,
                 "entity",
                 handle,
-                List.of("registrant"),
-                buildVcard(name, email),
+                roles,
+                vcard,
+                jsContactMapper.fromRdapEntity(handle, vcard, roles),
                 List.of(),
                 defaultLinks("/entity/" + handle),
                 List.of(new RdapEvent("last changed", EVENT_FORMATTER.format(LocalDate.of(2024, 12, 10))))
@@ -178,6 +210,7 @@ public class RdapDataStore {
                 registrantEntity
         );
         return new DomainResource(
+                BASE_RDAP_CONFORMANCE,
                 "domain",
                 handle,
                 ldhName,
@@ -195,6 +228,7 @@ public class RdapDataStore {
 
     private NameserverResource buildNameserver(String handle, String ldhName, List<String> ipAddresses) {
         return new NameserverResource(
+                BASE_RDAP_CONFORMANCE,
                 "nameserver",
                 handle,
                 ldhName,
@@ -209,6 +243,7 @@ public class RdapDataStore {
 
     private AutnumResource buildAutnum(Long asn, String name, RdapEntity registryEntity, RdapEntity registrarEntity) {
         return new AutnumResource(
+                BASE_RDAP_CONFORMANCE,
                 "autnum",
                 "AS" + asn,
                 asn,
@@ -225,6 +260,7 @@ public class RdapDataStore {
 
     private IpNetworkResource buildIpv4Network(String handle, String start, String end, String name, RdapEntity entity) {
         return new IpNetworkResource(
+                BASE_RDAP_CONFORMANCE,
                 "ip network",
                 handle,
                 start,
@@ -243,6 +279,7 @@ public class RdapDataStore {
 
     private IpNetworkResource buildIpv6Network(String handle, String start, String end, String name, RdapEntity entity) {
         return new IpNetworkResource(
+                BASE_RDAP_CONFORMANCE,
                 "ip network",
                 handle,
                 start,
@@ -259,10 +296,23 @@ public class RdapDataStore {
         );
     }
 
-    private Object buildVcard(String name, String email) {
-        List<Object> emailComponent = List.of("email", List.of("type", "work"), "text", email);
-        List<Object> fnComponent = List.of("fn", "", "text", name);
-        return List.of("vcard", List.of(fnComponent, emailComponent));
+    private Object buildVcard(String name, String email, List<String> roles) {
+        List<Object> properties = new ArrayList<>();
+        properties.add(List.of("fn", Map.of(), "text", name));
+
+        List<Object> nValue = List.of("", name, "", "", "");
+        properties.add(List.of("n", Map.of(), "text", nValue));
+
+        Map<String, Object> emailParams = Map.of("type", List.of("work"), "pref", 1);
+        properties.add(List.of("email", emailParams, "text", email));
+
+        if (roles != null) {
+            roles.forEach(role ->
+                    properties.add(List.of("role", Map.of(), "text", role))
+            );
+        }
+
+        return List.of("vcard", properties);
     }
 
     private List<RdapNotice> defaultNotices() {
