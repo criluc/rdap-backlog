@@ -2,7 +2,7 @@
 id: decision-1
 title: Stack java e spring boot
 date: '2025-10-22 12:04'
-status: proposed
+status: accepted
 ---
 ## Context
 
@@ -27,6 +27,7 @@ progetto:
 | **Build System** | Maven | Standard |
 | **Documentazione API** | OpenAPI e Swagger | Standard |
 | **Testing (Mocking)** | Mockito | Standard |
+| **Cartella sorgenti** | src/main/java | Standard |
 
 ***
 
