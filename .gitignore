@@ -27,6 +27,6 @@ dist/
 nbdist/
 .nb-gradle/
 
-#Personal configuration
-/application.properties
-/application.yml
+
+.m2
+
