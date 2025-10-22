@@ -1,10 +1,10 @@
 ---
 id: task-last.3
 title: Search endpoints RFC 9082
-status: Done
+status: To Do
 assignee: []
 created_date: '2025-10-22 11:21'
-updated_date: '2025-10-22 11:37'
+updated_date: '2025-10-22 12:21'
 labels:
   - rdap
   - search

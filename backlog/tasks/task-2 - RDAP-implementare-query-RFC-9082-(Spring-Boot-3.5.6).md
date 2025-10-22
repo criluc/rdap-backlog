@@ -1,10 +1,10 @@
 ---
 id: task-2
 title: 'RDAP: implementare query RFC 9082 (Spring Boot 3.5.6)'
-status: Done
+status: To Do
 assignee: []
 created_date: '2025-10-22 11:20'
-updated_date: '2025-10-22 11:37'
+updated_date: '2025-10-22 12:21'
 labels:
   - rdap
   - backend
