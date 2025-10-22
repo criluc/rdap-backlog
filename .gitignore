@@ -28,5 +28,5 @@ nbdist/
 .nb-gradle/
 
 #Personal configuration
-application.properties
-application.yml
+/application.properties
+/application.yml
