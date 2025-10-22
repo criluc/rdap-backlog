@@ -1,0 +1,6 @@
+server:
+  servlet:
+    context-path: /rdap
+spring:
+  application:
+    name: rdap-service
