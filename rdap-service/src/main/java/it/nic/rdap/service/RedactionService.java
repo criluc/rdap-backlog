@@ -30,6 +30,9 @@ public class RedactionService {
 
     private static final String REDACTED_CONFORMANCE = "redacted";
     private static final String REGISTRANT_HANDLE = "SH8013-REGISTRANT";
+    private static final String JSON_PATH_LANG = "jsonpath";
+    private static final RedactedField.RedactionDescriptor DEFAULT_REASON =
+            new RedactedField.RedactionDescriptor("Server policy", null);
 
     private final ObjectMapper objectMapper;
     private final Configuration jsonPathConfiguration;
@@ -52,7 +55,10 @@ public class RedactionService {
         }
         JsonNode originalNode = objectMapper.valueToTree(resource);
         List<RdapEntity> redactedEntities = new ArrayList<>(entities.size());
-        List<RedactedField> aggregated = new ArrayList<>();
+        List<RedactedField> combinedRedactions = resource.redacted() == null
+                ? new ArrayList<>()
+                : new ArrayList<>(resource.redacted());
+        int originalRedactionCount = combinedRedactions.size();
 
         for (int index = 0; index < entities.size(); index++) {
             RdapEntity entity = entities.get(index);
@@ -62,14 +68,15 @@ public class RedactionService {
             if (!outcome.fields().isEmpty()) {
                 List<RedactedField> nested = nestRedactions(outcome.fields(), "$.entities[" + index + "]");
                 nested.forEach(field -> validateJsonPath(originalNode, field.prePath()));
-                aggregated.addAll(nested);
+                combinedRedactions.addAll(nested);
             }
         }
 
-        List<String> conformance = aggregated.isEmpty()
-                ? resource.rdapConformance()
-                : addRedactedConformance(resource.rdapConformance());
-        List<RedactedField> redacted = aggregated.isEmpty() ? resource.redacted() : List.copyOf(aggregated);
+        boolean addedDynamic = combinedRedactions.size() > originalRedactionCount;
+        List<String> conformance = addedDynamic
+                ? addRedactedConformance(resource.rdapConformance())
+                : resource.rdapConformance();
+        List<RedactedField> redacted = combinedRedactions.isEmpty() ? null : List.copyOf(combinedRedactions);
 
         return new DomainResource(
                 conformance,
@@ -82,7 +89,10 @@ public class RedactionService {
                 resource.events(),
                 resource.notices(),
                 List.copyOf(redactedEntities),
-                resource.links()
+                resource.links(),
+                resource.nameservers(),
+                resource.secureDNS(),
+                resource.versioningData()
         );
     }
 
@@ -92,7 +102,10 @@ public class RedactionService {
         }
         List<DomainResource> results = response.domainSearchResults();
         List<DomainResource> redactedResults = new ArrayList<>(results.size());
-        List<RedactedField> aggregated = new ArrayList<>();
+        List<RedactedField> combined = response.redacted() == null
+                ? new ArrayList<>()
+                : new ArrayList<>(response.redacted());
+        int originalCount = combined.size();
 
         for (int index = 0; index < results.size(); index++) {
             DomainResource domainResource = results.get(index);
@@ -100,14 +113,15 @@ public class RedactionService {
             redactedResults.add(redacted);
             if (redacted.redacted() != null && !redacted.redacted().isEmpty()) {
                 List<RedactedField> nested = nestRedactions(redacted.redacted(), "$.domainSearchResults[" + index + "]");
-                aggregated.addAll(nested);
+                combined.addAll(nested);
             }
         }
 
-        List<String> conformance = aggregated.isEmpty()
-                ? response.rdapConformance()
-                : addRedactedConformance(response.rdapConformance());
-        List<RedactedField> redacted = aggregated.isEmpty() ? response.redacted() : List.copyOf(aggregated);
+        boolean addedDynamic = combined.size() > originalCount;
+        List<String> conformance = addedDynamic
+                ? addRedactedConformance(response.rdapConformance())
+                : response.rdapConformance();
+        List<RedactedField> redacted = combined.isEmpty() ? null : List.copyOf(combined);
 
         return new DomainSearchResponse(
                 conformance,
@@ -133,7 +147,10 @@ public class RedactionService {
         }
         List<RdapEntity> results = response.entitySearchResults();
         List<RdapEntity> redactedResults = new ArrayList<>(results.size());
-        List<RedactedField> aggregated = new ArrayList<>();
+        List<RedactedField> combined = response.redacted() == null
+                ? new ArrayList<>()
+                : new ArrayList<>(response.redacted());
+        int originalCount = combined.size();
 
         for (int index = 0; index < results.size(); index++) {
             RdapEntity entity = results.get(index);
@@ -141,14 +158,15 @@ public class RedactionService {
             redactedResults.add(redacted);
             if (redacted.redacted() != null && !redacted.redacted().isEmpty()) {
                 List<RedactedField> nested = nestRedactions(redacted.redacted(), "$.entitySearchResults[" + index + "]");
-                aggregated.addAll(nested);
+                combined.addAll(nested);
             }
         }
 
-        List<String> conformance = aggregated.isEmpty()
-                ? response.rdapConformance()
-                : addRedactedConformance(response.rdapConformance());
-        List<RedactedField> redacted = aggregated.isEmpty() ? response.redacted() : List.copyOf(aggregated);
+        boolean addedDynamic = combined.size() > originalCount;
+        List<String> conformance = addedDynamic
+                ? addRedactedConformance(response.rdapConformance())
+                : response.rdapConformance();
+        List<RedactedField> redacted = combined.isEmpty() ? null : List.copyOf(combined);
 
         return new EntitySearchResponse(
                 conformance,
@@ -202,7 +220,10 @@ public class RedactionService {
                 updatedCard,
                 entity.publicIds(),
                 entity.links(),
-                entity.events()
+                entity.events(),
+                entity.status(),
+                entity.remarks(),
+                entity.itNicDnssec()
         );
         return new RedactionOutcome<>(updated, immutableFields);
     }
@@ -230,23 +251,23 @@ public class RedactionService {
             if ("fn".equals(name)) {
                 property.set(3, "");
                 properties.set(index, property);
-                fields.add(new RedactedField(
-                        "registrant-fn",
+                fields.add(buildField(
+                        "Registrant full name",
                         "$.vcardArray[1][" + index + "][3]",
                         "$.vcardArray[1][" + index + "][3]",
                         "emptyValue",
-                        List.of("Registrant full name withheld for privacy.")
+                        "Registrant full name withheld for privacy."
                 ));
             } else if ("email".equals(name)) {
                 String original = property.get(3) != null ? property.get(3).toString() : "";
                 property.set(3, maskEmail(original));
                 properties.set(index, property);
-                fields.add(new RedactedField(
-                        "registrant-email",
+                fields.add(buildField(
+                        "Registrant email",
                         "$.vcardArray[1][" + index + "][3]",
                         "$.vcardArray[1][" + index + "][3]",
                         "partial",
-                        List.of("Email local-part partially redacted for privacy.")
+                        "Email local-part partially redacted for privacy."
                 ));
             }
         }
@@ -268,12 +289,12 @@ public class RedactionService {
             Map<String, JsContactEmail> mutable = new LinkedHashMap<>(emails);
             mutable.remove("email1");
             updatedEmails = mutable.isEmpty() ? null : Map.copyOf(mutable);
-            fields.add(new RedactedField(
-                    "registrant-jscontact-email",
+            fields.add(buildField(
+                    "Registrant JSContact email",
                     "$.jsContactCard.emails",
                     "$.jsContactCard.emails.email1",
                     "removal",
-                    List.of("Primary email removed for privacy.")
+                    "Primary email removed for privacy."
             ));
         }
 
@@ -281,12 +302,12 @@ public class RedactionService {
         JsContactName updatedName = name;
         if (name != null && name.full() != null && !name.full().isBlank()) {
             updatedName = new JsContactName("REDACTED", name.components());
-            fields.add(new RedactedField(
-                    "registrant-jscontact-name",
+            fields.add(buildField(
+                    "Registrant JSContact name",
                     "$.jsContactCard.name.full",
                     "$.jsContactCard.name.full",
                     "replacement",
-                    List.of("Full name replaced to comply with privacy policy.")
+                    "Full name replaced to comply with privacy policy."
             ));
         }
 
@@ -315,13 +336,32 @@ public class RedactionService {
         for (RedactedField field : fields) {
             nested.add(new RedactedField(
                     field.name(),
-                    nestPath(prefix, field.path()),
                     nestPath(prefix, field.prePath()),
+                    nestPath(prefix, field.path()),
+                    field.pathLang(),
                     field.method(),
+                    field.reason(),
                     field.description()
             ));
         }
         return nested;
+    }
+
+    private RedactedField buildField(String nameDescription,
+                                     String prePath,
+                                     String path,
+                                     String method,
+                                     String detail) {
+        List<String> description = detail == null ? null : List.of(detail);
+        return new RedactedField(
+                new RedactedField.RedactionDescriptor(nameDescription, null),
+                prePath,
+                path,
+                JSON_PATH_LANG,
+                method,
+                DEFAULT_REASON,
+                description
+        );
     }
 
     private String nestPath(String prefix, String path) {

@@ -1,5 +1,6 @@
 package it.nic.rdap.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import it.nic.rdap.model.AutnumResource;
 import it.nic.rdap.model.DomainResource;
 import it.nic.rdap.model.DomainSearchResponse;
@@ -13,8 +14,11 @@ import it.nic.rdap.model.RdapEvent;
 import it.nic.rdap.model.RdapLink;
 import it.nic.rdap.model.RdapNotice;
 import it.nic.rdap.model.RdapPublicId;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -42,9 +46,11 @@ public class RdapDataStore {
     private final Map<String, IpNetworkResource> networks;
     private final HelpResponse helpResponse;
     private final JsContactMapper jsContactMapper;
+    private final ObjectMapper objectMapper;
 
-    public RdapDataStore(JsContactMapper jsContactMapper) {
+    public RdapDataStore(JsContactMapper jsContactMapper, ObjectMapper objectMapper) {
         this.jsContactMapper = jsContactMapper;
+        this.objectMapper = objectMapper;
         RdapEntity registryEntity = buildRegistryEntity();
         RdapEntity registrarEntity = buildRegistrarEntity();
         RdapEntity registrantEntity = buildContactEntity("SH8013-REGISTRANT", "Registrant Example", "registrant@example.it");
@@ -57,7 +63,7 @@ public class RdapDataStore {
 
         domains = Map.ofEntries(
                 entry("example.it", buildDomain("EXAMPLE-IT", "example.it", registryEntity, registrarEntity, registrantEntity)),
-                entry("nic.it", buildDomain("NIC-IT", "nic.it", registryEntity, registrarEntity, registrantEntity))
+                entry("nic.it", loadDomainResource("data/domain-nic-it.json"))
         );
 
         nameservers = Map.ofEntries(
@@ -167,7 +173,10 @@ public class RdapDataStore {
                 jsContactMapper.fromRdapEntity(handle, vcard, roles),
                 List.of(new RdapPublicId("IANA", "1234")),
                 defaultLinks("/entity/NIC-REG"),
-                List.of(new RdapEvent("last changed", EVENT_FORMATTER.format(LocalDate.of(2024, 6, 18))))
+                List.of(new RdapEvent("last changed", EVENT_FORMATTER.format(LocalDate.of(2024, 6, 18)))),
+                null,
+                null,
+                null
         );
     }
 
@@ -185,7 +194,10 @@ public class RdapDataStore {
                 jsContactMapper.fromRdapEntity(handle, vcard, roles),
                 List.of(new RdapPublicId("IANA Registrar ID", "9999")),
                 defaultLinks("/entity/REG-EXAMPLE"),
-                List.of(new RdapEvent("last changed", EVENT_FORMATTER.format(LocalDate.of(2025, 1, 15))))
+                List.of(new RdapEvent("last changed", EVENT_FORMATTER.format(LocalDate.of(2025, 1, 15)))),
+                null,
+                null,
+                null
         );
     }
 
@@ -202,7 +214,10 @@ public class RdapDataStore {
                 jsContactMapper.fromRdapEntity(handle, vcard, roles),
                 List.of(),
                 defaultLinks("/entity/" + handle),
-                List.of(new RdapEvent("last changed", EVENT_FORMATTER.format(LocalDate.of(2024, 12, 10))))
+                List.of(new RdapEvent("last changed", EVENT_FORMATTER.format(LocalDate.of(2024, 12, 10)))),
+                List.of("active"),
+                null,
+                null
         );
     }
 
@@ -226,8 +241,20 @@ public class RdapDataStore {
                 ),
                 defaultNotices(),
                 assocEntities,
-                defaultLinks("/domain/" + ldhName)
+                defaultLinks("/domain/" + ldhName),
+                null,
+                null,
+                null
         );
+    }
+
+    private DomainResource loadDomainResource(String resourcePath) {
+        Resource resource = new ClassPathResource(resourcePath);
+        try (var inputStream = resource.getInputStream()) {
+            return objectMapper.readValue(inputStream, DomainResource.class);
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to load RDAP domain resource from " + resourcePath, e);
+        }
     }
 
     private NameserverResource buildNameserver(String handle, String ldhName, List<String> ipAddresses) {

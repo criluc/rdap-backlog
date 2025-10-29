@@ -36,7 +36,10 @@ public class RdapContactAdapter {
                 resource.events(),
                 resource.notices(),
                 adaptedEntities,
-                resource.links()
+                resource.links(),
+                resource.nameservers(),
+                resource.secureDNS(),
+                resource.versioningData()
         );
     }
 
@@ -53,7 +56,10 @@ public class RdapContactAdapter {
                 jsContact,
                 entity.publicIds(),
                 entity.links(),
-                entity.events()
+                entity.events(),
+                entity.status(),
+                entity.remarks(),
+                entity.itNicDnssec()
         );
     }
 
@@ -156,18 +162,19 @@ public class RdapContactAdapter {
     }
 
     private List<String> conformance(List<String> base, ContactFormat format) {
+        List<String> current = base == null ? List.of() : base;
         if (format != ContactFormat.JSCONTACT) {
-            if (base.contains(RdapDataStore.JSCONTACT_CONFORMANCE)) {
-                List<String> trimmed = new ArrayList<>(base);
+            if (current.contains(RdapDataStore.JSCONTACT_CONFORMANCE)) {
+                List<String> trimmed = new ArrayList<>(current);
                 trimmed.remove(RdapDataStore.JSCONTACT_CONFORMANCE);
                 return List.copyOf(trimmed);
             }
-            return base;
+            return current;
         }
-        if (base.contains(RdapDataStore.JSCONTACT_CONFORMANCE)) {
-            return base;
+        if (current.contains(RdapDataStore.JSCONTACT_CONFORMANCE)) {
+            return current;
         }
-        List<String> updated = new ArrayList<>(base);
+        List<String> updated = new ArrayList<>(current);
         updated.add(RdapDataStore.JSCONTACT_CONFORMANCE);
         return List.copyOf(updated);
     }
