@@ -31,9 +31,14 @@ class RdapControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("application/rdap+json"))
                 .andExpect(jsonPath("$.objectClassName").value("domain"))
-                .andExpect(jsonPath("$.rdapConformance[0]").value("rdap_level_0"))
+                .andExpect(jsonPath("$.rdapConformance", containsInAnyOrder("rdap_level_0", "redacted")))
                 .andExpect(jsonPath("$.ldhName").value("example.it"))
-                .andExpect(jsonPath("$.links[0].rel").value("self"));
+                .andExpect(jsonPath("$.links[0].rel").value("self"))
+                .andExpect(jsonPath("$.redacted[0].method").value("emptyValue"))
+                .andExpect(jsonPath("$.redacted[0].prePath").value("$.entities[2].vcardArray[1][0][3]"))
+                .andExpect(jsonPath("$.redacted[1].method").value("partial"))
+                .andExpect(jsonPath("$.entities[2].vcardArray[1][0][3]").value(""))
+                .andExpect(jsonPath("$.entities[2].vcardArray[1][2][3]").value("reg***@example.it"));
     }
 
     @Test
@@ -61,9 +66,12 @@ class RdapControllerIntegrationTest {
         mockMvc.perform(get("/rdap/domain/example.it")
                         .accept("application/rdap+json;ext=jscontact"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.rdapConformance", containsInAnyOrder("rdap_level_0", "draft-ietf-regext-rdap-jscontact")))
+                .andExpect(jsonPath("$.rdapConformance", containsInAnyOrder("rdap_level_0", "draft-ietf-regext-rdap-jscontact", "redacted")))
                 .andExpect(jsonPath("$.entities[0].jsContactCard.uid").value("NIC-REG"))
-                .andExpect(jsonPath("$.entities[0].vcardArray").doesNotExist());
+                .andExpect(jsonPath("$.entities[0].vcardArray").doesNotExist())
+                .andExpect(jsonPath("$.entities[2].jsContactCard.name.full").value("REDACTED"))
+                .andExpect(jsonPath("$.entities[2].jsContactCard.emails").doesNotExist())
+                .andExpect(jsonPath("$.redacted[*].method", containsInAnyOrder("removal", "replacement")));
     }
 
     @Test
@@ -94,7 +102,9 @@ class RdapControllerIntegrationTest {
                         .queryParam("name", "example")
                         .accept("application/rdap+json"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.domainSearchResults[0].ldhName").value("example.it"));
+                .andExpect(jsonPath("$.domainSearchResults[0].ldhName").value("example.it"))
+                .andExpect(jsonPath("$.domainSearchResults[0].rdapConformance", containsInAnyOrder("rdap_level_0", "redacted")))
+                .andExpect(jsonPath("$.redacted[0].prePath").value("$.domainSearchResults[0].entities[2].vcardArray[1][0][3]"));
     }
 
     @Test
@@ -118,12 +128,36 @@ class RdapControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Registrant entity response includes redaction metadata")
+    void registrantEntityRedaction() throws Exception {
+        mockMvc.perform(get("/rdap/entity/SH8013-REGISTRANT")
+                        .accept("application/rdap+json"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rdapConformance", containsInAnyOrder("rdap_level_0", "redacted")))
+                .andExpect(jsonPath("$.redacted[0].method").value("emptyValue"))
+                .andExpect(jsonPath("$.vcardArray[1][0][3]").value(""))
+                .andExpect(jsonPath("$.vcardArray[1][2][3]").value("reg***@example.it"));
+    }
+
+    @Test
     @DisplayName("Entity search requires fn or handle query parameter")
     void entitySearchMissingParam() throws Exception {
         mockMvc.perform(get("/rdap/entities")
                         .accept("application/rdap+json"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value(400));
+    }
+
+    @Test
+    @DisplayName("Entity search aggregates redacted metadata from results")
+    void entitySearchRedaction() throws Exception {
+        mockMvc.perform(get("/rdap/entities")
+                        .queryParam("handle", "SH8013")
+                        .accept("application/rdap+json"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entitySearchResults[0].handle").value("SH8013-REGISTRANT"))
+                .andExpect(jsonPath("$.entitySearchResults[0].rdapConformance", containsInAnyOrder("rdap_level_0", "redacted")))
+                .andExpect(jsonPath("$.redacted[0].prePath").value("$.entitySearchResults[0].vcardArray[1][0][3]"));
     }
 
     @Test

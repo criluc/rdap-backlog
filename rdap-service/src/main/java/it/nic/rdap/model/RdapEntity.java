@@ -8,6 +8,7 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record RdapEntity(
         List<String> rdapConformance,
+        List<RedactedField> redacted,
         String objectClassName,
         String handle,
         List<String> roles,

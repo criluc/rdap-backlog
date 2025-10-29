@@ -7,20 +7,21 @@ import it.nic.rdap.config.RdapWebConfig;
 import it.nic.rdap.model.HelpResponse;
 import it.nic.rdap.model.RdapErrorResponse;
 import org.springframework.core.MethodParameter;
-import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
-import org.springframework.stereotype.Component;
+import org.springframework.http.server.ServletServerHttpResponse;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-@Component
+
+@RestControllerAdvice
 public class RdapResponseHeaderAdvice implements ResponseBodyAdvice<Object> {
 
     private static final DateTimeFormatter HTTP_DATE =
@@ -60,25 +61,25 @@ public class RdapResponseHeaderAdvice implements ResponseBodyAdvice<Object> {
         String ifNoneMatch = request.getHeaders().getFirst(HttpHeaders.IF_NONE_MATCH);
 
         if (body instanceof HelpResponse) {
-            headers.setCacheControl(CacheControl.maxAge(86400, java.util.concurrent.TimeUnit.SECONDS).cachePublic());
+            headers.set(HttpHeaders.CACHE_CONTROL, "public, max-age=86400");
             headers.set(HttpHeaders.EXPIRES, HTTP_DATE.format(helpLastModified.plusSeconds(86400)));
             headers.set(HttpHeaders.LAST_MODIFIED, HTTP_DATE.format(helpLastModified));
             setEtag(headers, etag);
             if (ifNoneMatch != null && ifNoneMatch.equals(etag)) {
-                response.setStatusCode(HttpStatus.NOT_MODIFIED);
+                propagateNotModified(response, etag);
                 return null;
             }
             return body;
         }
 
-        headers.setCacheControl(CacheControl.noStore());
+        headers.set(HttpHeaders.CACHE_CONTROL, "no-store");
         setEtag(headers, etag);
         if (body instanceof RdapErrorResponse) {
             return body;
         }
 
         if (ifNoneMatch != null && ifNoneMatch.equals(etag)) {
-            response.setStatusCode(HttpStatus.NOT_MODIFIED);
+            propagateNotModified(response, etag);
             return null;
         }
 
@@ -96,6 +97,30 @@ public class RdapResponseHeaderAdvice implements ResponseBodyAdvice<Object> {
             return "\"" + hash + "\"";
         } catch (JsonProcessingException e) {
             return "\"00000000\"";
+        }
+    }
+
+    private void propagateNotModified(ServerHttpResponse response, String etag) {
+        if (response instanceof ServletServerHttpResponse servletResponse) {
+            var raw = servletResponse.getServletResponse();
+            raw.setStatus(HttpStatus.NOT_MODIFIED.value());
+            raw.setHeader(HttpHeaders.ETAG, etag);
+            HttpHeaders headers = response.getHeaders();
+            String cacheControl = headers.getFirst(HttpHeaders.CACHE_CONTROL);
+            if (cacheControl != null) {
+                raw.setHeader(HttpHeaders.CACHE_CONTROL, cacheControl);
+            }
+            String expires = headers.getFirst(HttpHeaders.EXPIRES);
+            if (expires != null) {
+                raw.setHeader(HttpHeaders.EXPIRES, expires);
+            }
+            String lastModified = headers.getFirst(HttpHeaders.LAST_MODIFIED);
+            if (lastModified != null) {
+                raw.setHeader(HttpHeaders.LAST_MODIFIED, lastModified);
+            }
+        } else {
+            response.setStatusCode(HttpStatus.NOT_MODIFIED);
+            setEtag(response.getHeaders(), etag);
         }
     }
 }
