@@ -1,6 +1,7 @@
 package it.nic.rdap.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
@@ -16,6 +17,9 @@ public record DomainResource(
         List<RdapEvent> events,
         List<RdapNotice> notices,
         List<RdapEntity> entities,
-        List<RdapLink> links
+        List<RdapLink> links,
+        List<RdapDomainNameserver> nameservers,
+        RdapSecureDns secureDNS,
+        @JsonProperty("versioning_data") List<RdapVersionEntry> versioningData
 ) {
 }

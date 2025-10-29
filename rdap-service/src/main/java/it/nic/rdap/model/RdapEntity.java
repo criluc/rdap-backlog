@@ -1,6 +1,7 @@
 package it.nic.rdap.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import it.nic.rdap.model.jscontact.JsContactCard;
 
 import java.util.List;
@@ -16,6 +17,9 @@ public record RdapEntity(
         JsContactCard jsContactCard,
         List<RdapPublicId> publicIds,
         List<RdapLink> links,
-        List<RdapEvent> events
+        List<RdapEvent> events,
+        List<String> status,
+        List<RdapRemark> remarks,
+        @JsonProperty("itNic_DNSSEC") Boolean itNicDnssec
 ) {
 }

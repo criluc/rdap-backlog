@@ -42,6 +42,19 @@ class RdapControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("Domain nic.it reflects official RDAP snapshot")
+    void domainLookupNicIt() throws Exception {
+        mockMvc.perform(get("/rdap/domain/nic.it")
+                        .accept("application/rdap+json"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rdapConformance", containsInAnyOrder("itNic", "versioning", "redacted", "rdap_level_0")))
+                .andExpect(jsonPath("$.nameservers[0].ldhName").value("dns.nic.it"))
+                .andExpect(jsonPath("$.secureDNS.delegationSigned").value(true))
+                .andExpect(jsonPath("$.redacted[0].name.description").value("Registrar Address"))
+                .andExpect(jsonPath("$.versioning_data[0].extension").value("rdap_level_0"));
+    }
+
+    @Test
     @DisplayName("Domain lookup honours ETag and Cache-Control")
     void domainLookupConditional() throws Exception {
         MvcResult result = mockMvc.perform(get("/rdap/domain/example.it")
