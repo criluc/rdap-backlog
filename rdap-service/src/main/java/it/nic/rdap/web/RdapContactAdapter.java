@@ -27,6 +27,7 @@ public class RdapContactAdapter {
 
         return new DomainResource(
                 conformance(resource.rdapConformance(), format),
+                resource.redacted(),
                 resource.objectClassName(),
                 resource.handle(),
                 resource.ldhName(),
@@ -44,6 +45,7 @@ public class RdapContactAdapter {
         var jsContact = format == ContactFormat.JSCONTACT ? entity.jsContactCard() : null;
         return new RdapEntity(
                 conformance(entity.rdapConformance(), format),
+                entity.redacted(),
                 entity.objectClassName(),
                 entity.handle(),
                 entity.roles(),
@@ -62,6 +64,7 @@ public class RdapContactAdapter {
                 .toList();
         return new DomainSearchResponse(
                 conformance(response.rdapConformance(), format),
+                response.redacted(),
                 adapted,
                 response.notices(),
                 response.links()
@@ -75,6 +78,7 @@ public class RdapContactAdapter {
                 .toList();
         return new EntitySearchResponse(
                 conformance(response.rdapConformance(), format),
+                response.redacted(),
                 adapted,
                 response.notices(),
                 response.links()

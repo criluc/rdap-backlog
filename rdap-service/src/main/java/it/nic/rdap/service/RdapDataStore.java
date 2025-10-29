@@ -130,7 +130,7 @@ public class RdapDataStore {
             String ldhName = entry.getValue().ldhName().toLowerCase(Locale.ROOT);
             return key.contains(normalized) || ldhName.contains(normalized);
         });
-        return new DomainSearchResponse(BASE_RDAP_CONFORMANCE, results, defaultNotices(), defaultLinks("/domains?name=" + query));
+        return new DomainSearchResponse(BASE_RDAP_CONFORMANCE, null, results, defaultNotices(), defaultLinks("/domains?name=" + query));
     }
 
     public NameserverSearchResponse searchNameservers(String query) {
@@ -142,7 +142,7 @@ public class RdapDataStore {
     public EntitySearchResponse searchEntities(String query) {
         List<RdapEntity> results = filter(entities, entry ->
                 entry.getKey().contains(normalizeKey(query)));
-        return new EntitySearchResponse(BASE_RDAP_CONFORMANCE, results, defaultNotices(), defaultLinks("/entities?fn=" + query));
+        return new EntitySearchResponse(BASE_RDAP_CONFORMANCE, null, results, defaultNotices(), defaultLinks("/entities?fn=" + query));
     }
 
     public HelpResponse help() {
@@ -159,6 +159,7 @@ public class RdapDataStore {
         Object vcard = buildVcard("NIC Registry", "rdap-support@nic.it", roles);
         return new RdapEntity(
                 BASE_RDAP_CONFORMANCE,
+                null,
                 "entity",
                 handle,
                 roles,
@@ -176,6 +177,7 @@ public class RdapDataStore {
         Object vcard = buildVcard("Example Registrar S.p.A.", "contact@example-registrar.it", roles);
         return new RdapEntity(
                 BASE_RDAP_CONFORMANCE,
+                null,
                 "entity",
                 handle,
                 roles,
@@ -192,6 +194,7 @@ public class RdapDataStore {
         Object vcard = buildVcard(name, email, roles);
         return new RdapEntity(
                 BASE_RDAP_CONFORMANCE,
+                null,
                 "entity",
                 handle,
                 roles,
@@ -211,6 +214,7 @@ public class RdapDataStore {
         );
         return new DomainResource(
                 BASE_RDAP_CONFORMANCE,
+                null,
                 "domain",
                 handle,
                 ldhName,
